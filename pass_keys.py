@@ -3,13 +3,16 @@ import re
 from kittens.tui.handler import result_handler
 from kitty.key_encoding import KeyEvent, parse_shortcut
 
-VIM_ID = "n?vim"
+PASSTHROUGH = r'\b(vim|nvim|fzf)\b'
 
 
-def is_window_vim(window):
+def is_window_passthrough(window):
     fp = window.child.foreground_processes
     return any(
-        re.search(VIM_ID, p["cmdline"][0] if len(p["cmdline"]) else "", re.I)
+        # Using cmdline[0] for now.
+        # For something like 'zoxide query | fzf'
+        # the actual binary receiving input might be the last element, so [-1] could be needed.
+        re.search(PASSTHROUGH, p['cmdline'][0] if len(p['cmdline']) else '', re.IGNORECASE)
         for p in fp
     )
 
@@ -42,8 +45,8 @@ def handle_result(args, result, target_window_id, boss):
 
     if window is None:
         return
-    if is_window_vim(window):
-        for keymap in key_mapping.split(">"):
+    if is_window_passthrough(window):
+        for keymap in key_mapping.split('>'):
             encoded = encode_key_mapping(window, keymap)
             window.write_to_child(encoded)
     else:
