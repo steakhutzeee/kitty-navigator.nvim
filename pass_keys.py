@@ -6,15 +6,17 @@ from kitty.key_encoding import KeyEvent, parse_shortcut
 PASSTHROUGH = r'\b(vim|nvim|fzf)\b'
 
 
+# Return True if any foreground process in the window matches PASSTHROUGH
 def is_window_passthrough(window):
+
     fp = window.child.foreground_processes
-    return any(
-        # Using cmdline[0] for now.
-        # For something like 'zoxide query | fzf'
-        # the actual binary receiving input might be the last element, so [-1] could be needed.
-        re.search(PASSTHROUGH, p['cmdline'][0] if len(p['cmdline']) else '', re.IGNORECASE)
-        for p in fp
-    )
+
+    # Check if any argument in a process's cmdline matches PASSTHROUGH,
+    # including when launched via wrappers or pipelines (e.g., "zoxide query | fzf")
+    def is_process_passthrough(p):
+        return any(re.search(PASSTHROUGH, arg, re.IGNORECASE) for arg in p['cmdline'])
+
+    return any(is_process_passthrough(p) for p in fp)
 
 
 def encode_key_mapping(window, key_mapping):
